@@ -91,6 +91,76 @@ kubernetes-microservices-project/
 
 ---
 
+## Ingress Routing Rules and Behaviour
+
+The application is exposed externally using the NGINX Ingress Controller with host-based routing.
+
+The following routing rules are configured:
+
+* Requests to **api.app.local** are routed to the backend API service.
+* Requests to **app.local** are routed to the frontend UI service.
+* Requests made directly using the cluster IP address do not match any host rule and are handled by the default NGINX backend, which returns a 404 response.
+
+### Routing Configuration (Conceptual)
+
+```
+User Request
+      ↓
+NGINX Ingress Controller
+      ↓
+---------------------------------
+Host: api.app.local   → backend-service
+Host: app.local       → frontend-service
+No host match         → default nginx 404
+---------------------------------
+```
+
+### Observed Behaviour During Testing
+
+* Accessing `api.app.local` returned the backend application response (Flask API message).
+* Accessing `app.local` reached the frontend container served by NGINX.
+* Accessing the application using the node IP address resulted in a default **404 Not Found** page from the Ingress controller.
+
+This confirms that host-based routing is functioning correctly and external traffic is being directed to the appropriate microservice within the cluster.
+
+### Example Ingress Resource
+
+```
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: microservices-ingress
+  namespace: project-prod
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: app.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 80
+
+  - host: api.app.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-service
+            port:
+              number: 5000
+```
+
+
+
+---
+
 ## Learning Outcomes
 
 This project helped in understanding:
